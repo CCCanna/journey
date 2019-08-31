@@ -1,7 +1,7 @@
-import datetime
 from collections import Counter
 
 from database import *
+import parser
 
 
 def get_zero_clock(date):
@@ -32,9 +32,9 @@ def get_first_weekday(day):
 
 
 def shrink(original_list):
-    """"消除列表中的重复元素"""
-    repeat = set(original_list)
-    return sorted(repeat)
+    """"消除列表中的重复元素，哎呀用set不好使欸"""
+    repeat = Counter(original_list)
+    return sorted(repeat.keys())
 
 
 def worker(user_id):
@@ -57,13 +57,7 @@ def worker(user_id):
     user['time_json'] = json.dumps(data_counter)
     pool = [user.get(key) for key in ['identifier', 'ip', 'activities', 'time_json']]
     pool.extend(count_activities(data_counter, time_series))
-    result_set.append(pool)
-
-
-def transform_result_set(result_frame):
-    """对结果集进行转置便于后续操作"""
-    transformed = result_frame.values.T
-    return [list(i) for i in transformed]
+    return pool
 
 
 def simplify_time(time_series):
@@ -111,27 +105,48 @@ def count_activities(counter, series):
 
 
 def expand_openid():
-    """获取用户openid散列"""
-    return shrink(log_data.openid.values)
+    """获取用户openid列表"""
+    frame = query_for_result("select distinct openid from user_log;")
+    return transform_result_set(frame)[0]
 
 
-def main():
-    # 用sqlaclhemy.create_engine来创建数据库引擎，然后手动建了一个database.py
-    create_table_user_action()
+# # 人家想把第二步的代码给做成一个模块来者，然而发现log_data独立不出去。
+# # 而且第一步生成的DataFrame不能直接在第二步使用，以及脚本是基于SQL数据库的，对于CSV用户不是很友好(这是编码的设(脑)计(子)缺(有)陷(坑)
+# parser.main()
+# print("step 2 running... it may take 8 minutes.")
+# create_table_user_action()
+# # weeks_index这个变量会在第三步被用到，生成这个变量需要第一步的数据
+# log_data = fetch_log_data()
+# weeks_index = get_week_index()
+# result_set = list()
+#
+# for openid in expand_openid():
+#     result_set.append(worker(openid))
+#
+# data_header = ['openid', 'ip', 'activities', 'time_json', 'dau', 'wau', 'mau']
+# data_frame = pd.DataFrame(result_set, columns=data_header)
+# # 存成csv。。。后面的数据库老是报错怎么办，我也很绝望啊
+# data_frame.to_csv(os.path.join(data_dir, 'user_action.csv'), index=None)
+# data_frame.to_sql('user_action', con=engine, chunksize=1000, if_exists='append', index=None)
+# print("calculation finished.")
 
-    log_data = fetch_log_data()
-    weeks_index = get_week_index()
-    result_set = list()
 
-    for openid in expand_openid():
-        worker(openid)
+weeks_index = [1557072000.0, 1557676800.0, 1558281600.0, 1558886400.0, 1559491200.0, 1560096000.0, 1560700800.0,
+               1561127751]
+# 执行最后一步操作生成报表(画图什么的是不可能的
+print("working on step 3, will output needed data in csv format.")
+# 活跃用户指标&&每个用户总活跃天数指标
+build_csv("DAU数据.csv", ['活跃天数', '人数'], 'select dau,count(*) from user_action group by dau')
+build_csv("WAU数据.csv", ['活跃天数', '人数'], 'select wau,count(*) from user_action group by wau')
+build_csv("MAU数据.csv", ['活跃天数', '人数'], 'select mau,count(*) from user_action group by mau')
 
-    data_header = ['openid', 'ip', 'activities', 'time_json', 'dau', 'wau', 'mau']
-    data_frame = pd.DataFrame(result_set, columns=data_header)
-    # 存成csv。。。后面的数据库翻车了人家能怎么办，人家也很绝望啊
-    data_frame.to_csv(os.path.join(data_dir, 'user_action.csv'), index=None)
-    data_frame.to_sql('user_action', con=engine, chunksize=1000, if_exists='append', index=None)
+# 启动次数指标
+# 😭😭😭😭😭😭最大的设计问题，没事做往数据库里面存两万个json
+# 这是要被打死的节奏啊😱😱😱，啊产品姐姐轻点
+json_data = merge_json(transform_result_set(query_for_result('select time_json from user_action'))[0])
+convert_dict(json_data, '每日用户活跃数.csv')
+convert_dict(build_weeks_json(weeks_index, json_data), '每周用户活跃数.csv')
 
-
-if __name__ == '__main__':
-    main()
+# 用户行为分析
+# 。。。。
+# 数据存在问题，不分析啦

@@ -1,4 +1,3 @@
-import datetime
 import re
 import urllib.parse
 
@@ -6,6 +5,7 @@ from database import *
 
 
 def get_location(location):
+    """Map location to word that shows what user had done."""
     if "/admin/" in location:
         return "管理员"
     return actions.get(location, "未知")
@@ -27,6 +27,7 @@ def get_date(string):
 
 
 def split_query(query):
+    """Split url.parse.query into list of required parameters."""
     legends = ["msg_signature", "signature", "openid", "nonce"]
     query = query.replace("zq_", "")
     slices = query.split("&")
@@ -63,6 +64,7 @@ def match(regex, string):
 
 
 def parse(string):
+    """Use regular expression to catch required data and return as a list."""
     string = re.sub(r"[ ]{2,}", " ", string)
     error_result = ["", False]
     if len(string) < 128:
@@ -73,24 +75,15 @@ def parse(string):
     method, url = match(r"(POST|GET|HEAD) (.*) =>", string)
     http_status_code = match(r"\(HTTP/1.\d (\d+)\)", string)
     _, signature, openid, nonce, location = parse_url(url)
-    results = [
-        ip,
-        week,
-        date,
-        time,
-        unix_stamp,
-        method,
-        http_status_code,
-        get_location(location),
-        location,
-        signature,
-        nonce,
-        openid,
-    ]
+    results = [ip, week, date, time, unix_stamp, method, http_status_code, get_location(location), location, signature,
+               nonce, openid]
     return results, True
 
 
 def main():
+    print("""step 1 running... it will take about 2 minutes.
+            温馨提示：如果想要修改数据最好从这里开始，用数据库很痛苦哒
+            (在某个凌晨某人写了个脚本用数据库修改数据，一觉醒来发现处理了10%不到""")
     create_table_user_log()
     error = open(os.path.join(data_dir, 'unmatched.txt'), "w+")
     values = list()
@@ -112,6 +105,7 @@ def main():
     frame = pd.DataFrame(values, columns=data_header)
     frame.to_csv(os.path.join(data_dir, 'user_log.csv'), index=None)
     frame.to_sql('user_log', engine, if_exists='append', index=None, chunksize=5000)
+    print('parsing from journal files finished.')
 
 
 if __name__ == '__main__':
