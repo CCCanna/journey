@@ -29,7 +29,7 @@ Every step has data output in sql and csv formats, please use them on your deman
             - 近期流失用户✗
         4. 用户留存率指标✗
         5. 每个用户总活跃天数指标✔
-    2. #### 参与度分析✔
+    2. #### 参与度分析✔ *后来发现设计问题把这个给整崩了*
         1. 启动次数指标✔
         2. 使用时长✗ *(时长这种东西不好算欸*
         3. 访问页面✗
