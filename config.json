@@ -1,11 +1,14 @@
 {
-  "hostname": "localhost",
-  "user": "root",
-  "password": "demo",
-  "database": "zq_log",
-  "log_dir": "log",
-  "result_dir": "result",
-  "action_map": {
+  "db_config": {
+    "hostname": "localhost",
+    "user": "root",
+    "password": "demo",
+    "database": "zq_log"
+  },
+  "data_dir": "data",
+  "log_dir": "data/log",
+  "result_dir": "data/result",
+  "projection": {
     "/microweb/module/courses/gpa/": "GPA",
     "/microweb/api/courses/gpa/": "GPA",
     "/microweb/api/account/manager/": "个人中心",
